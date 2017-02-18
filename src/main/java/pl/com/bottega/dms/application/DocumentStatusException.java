@@ -5,7 +5,7 @@ package pl.com.bottega.dms.application;
  */
 public class DocumentStatusException extends RuntimeException {
 
-    public DocumentStatusException() {
-        super("Not allowed do this");
+    public DocumentStatusException(String msg) {
+        super(msg);
     }
 }

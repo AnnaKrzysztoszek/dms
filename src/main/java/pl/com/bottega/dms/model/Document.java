@@ -5,8 +5,10 @@ import pl.com.bottega.dms.model.commands.*;
 import pl.com.bottega.dms.model.numbers.NumberGenerator;
 import pl.com.bottega.dms.model.printing.PrintCostCalculator;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 import static pl.com.bottega.dms.model.DocumentStatus.*;
 
@@ -19,68 +21,80 @@ public class Document {
     private DocumentStatus status;
     private String title;
     private String content;
-    private LocalDateTime verifiedAt, createdAt, publishedAt, changedAt;
-    private EmployeeId verifier, creator, publisher, editor;
+    private LocalDateTime createdAt;
+    private LocalDateTime verifiedAt;
+    private LocalDateTime publishedAt;
+    private LocalDateTime changedAt;
+    private EmployeeId creatorId;
+    private EmployeeId verifierId;
+    private EmployeeId editorId;
+    private EmployeeId publisherId;
+    private BigDecimal printCost;
+    private Set<Confirmation> confirmations;
 
-    public Document(CreateDocumentCommand createDocumentCommand, NumberGenerator numberGenerator) {
+    public Document(CreateDocumentCommand cmd, NumberGenerator numberGenerator) {
         this.number = numberGenerator.generate();
         this.status = DRAFT;
-        this.title = createDocumentCommand.getTitle();
-
-        this.createdAt = new LocalDateTime();
-        this.verifiedAt = getVerifiedAt();
-        this.publishedAt = getPublishedAt();
-        this.changedAt = getChangedAt();
-
-        this.creator = getCreator();
-        this.verifier = getVerifier();
-        this.publisher = getPublisher();
-        this.editor = getEditor();
-
-        //if (this.status == ARCHIVED)
+        this.title = cmd.getTitle();
+        this.createdAt = LocalDateTime.now();
+        this.creatorId = cmd.getEmployeeId();
+        this.confirmations = new HashSet<>();
     }
 
-    public void change(ChangeDocumentCommand changeDocumentCommand, EmployeeId employeeId) {
-        if (this.status == DRAFT || this.status == VERIFIED) {
-            this.title = changeDocumentCommand.getTitle();
-            this.content = changeDocumentCommand.getContent();
-            this.status = DRAFT;
-            this.changedAt = new LocalDateTime();
-            this.editor = employeeId;
-        } else {
-            throw new DocumentStatusException();
-        }
+    public void change(ChangeDocumentCommand cmd) {
+        if (!this.status.equals(DRAFT) && !this.status.equals(VERIFIED))
+            throw new DocumentStatusException("Document should be DRAFT or VERIFIED to PUBLISH");
+        this.title = cmd.getTitle();
+        this.content = cmd.getContent();
+        this.status = DRAFT;
+        this.changedAt = LocalDateTime.now();
+        this.editorId = cmd.getEmployeeId();
     }
 
     public void verify(EmployeeId employeeId) {
-        if (this.status == DRAFT) {
-            this.verifier = employeeId;
-            this.status = VERIFIED;
-            this.verifiedAt = new LocalDateTime();
-        } else {
-            throw new DocumentStatusException();
-        }
+        if (!this.status.equals(DRAFT))
+            throw new DocumentStatusException("Document should be DRAFT to VERIFY");
+        this.status = VERIFIED;
+        this.verifiedAt = LocalDateTime.now();
+        this.verifierId = employeeId;
     }
 
-    public void archive() {
+    public void archive(EmployeeId employeeId) {
         this.status = ARCHIVED;
     }
 
-    public void publish(PublishDocumentCommand publishDocumentCommand, PrintCostCalculator printCostCalculator, EmployeeId employeeId) {
-        if (this.status == VERIFIED) {
-            this.status = PUBLISHED;
-            this.publishedAt = new LocalDateTime();
-            this.publisher = employeeId;
-        } else {
-            throw new DocumentStatusException();
+    public void publish(PublishDocumentCommand cmd, PrintCostCalculator printCostCalculator) {
+        if(!this.status.equals(VERIFIED))
+            throw new DocumentStatusException("Document should be VERIFIED to PUBLISH");
+        this.status = PUBLISHED;
+        this.publishedAt = LocalDateTime.now();
+        this.publisherId = cmd.getEmployeeId();
+        this.printCost = printCostCalculator.calculateCost(this);
+        createConfirmations(cmd);
+    }
+
+    private void createConfirmations(PublishDocumentCommand cmd) {
+        for(EmployeeId employeeId : cmd.getRecipients()) {
+            confirmations.add(new Confirmation(employeeId));
         }
     }
-    public void confirm(ConfirmDocumentCommand confirmDocumentCommand) {
 
+    public void confirm(ConfirmDocumentCommand cmd) {
+        for (Confirmation confirmation : confirmations)
+            if (confirmation.isOwnedBy(cmd.getEmployeeId())) {
+                confirmation.confirm();
+                return;
+            }
+        throw new DocumentStatusException(String.format("Document not published for %s", cmd.getEmployeeId()));
     }
 
-    public void confirm(ConfirmForDocumentCommand confirmForDocumentCommand) {
-
+    public void confirmFor(ConfirmForDocumentCommand cmd) {
+        for (Confirmation confirmation : confirmations)
+            if (confirmation.isOwnedBy(cmd.getEmployeeId())) {
+                confirmation.confirmFor(cmd.getConfirmingEmployeeId());
+                return;
+            }
+        throw new DocumentStatusException(String.format("Document not published for %s", cmd.getEmployeeId()));
     }
 
     public DocumentStatus getStatus() {
@@ -99,12 +113,12 @@ public class Document {
         return content;
     }
 
-    public LocalDateTime getVerifiedAt() {
-        return verifiedAt;
-    }
-
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public LocalDateTime getVerifiedAt() {
+        return verifiedAt;
     }
 
     public LocalDateTime getPublishedAt() {
@@ -115,19 +129,31 @@ public class Document {
         return changedAt;
     }
 
-    public EmployeeId getVerifier() {
-        return verifier;
+    public EmployeeId getCreatorId() {
+        return creatorId;
     }
 
-    public EmployeeId getCreator() {
-        return creator;
+    public EmployeeId getVerifierId() {
+        return verifierId;
     }
 
-    public EmployeeId getPublisher() {
-        return publisher;
+    public EmployeeId getEditorId() {
+        return editorId;
     }
 
-    public EmployeeId getEditor() {
-        return editor;
+    public EmployeeId getPublisherId() {
+        return publisherId;
+    }
+
+    public BigDecimal getPrintCost() {
+        return printCost;
+    }
+
+    public boolean isConfirmedBy(EmployeeId employeeId) {
+        for (Confirmation confirmation : confirmations) {
+            if (confirmation.isOwnedBy(employeeId))
+                return confirmation.isConfirmed();
+        }
+        return false;
     }
 }
