@@ -8,5 +8,5 @@ import pl.com.bottega.dms.model.DocumentNumber;
 public interface DocumentCatalog {
 
     DocumentSearchResults find(DocumentQuery documentQuery);
-    DocumentDTO get(DocumentNumber documentNumber);
+    DocumentDto get(DocumentNumber documentNumber);
 }

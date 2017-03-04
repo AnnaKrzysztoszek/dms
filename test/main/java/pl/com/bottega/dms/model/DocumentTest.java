@@ -1,15 +1,14 @@
 package pl.com.bottega.dms.model;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 import pl.com.bottega.dms.application.DocumentStatusException;
-import pl.com.bottega.dms.model.commands.ChangeDocumentCommand;
-import pl.com.bottega.dms.model.commands.ConfirmDocumentCommand;
-import pl.com.bottega.dms.model.commands.CreateDocumentCommand;
-import pl.com.bottega.dms.model.commands.PublishDocumentCommand;
+import pl.com.bottega.dms.model.commands.*;
 import pl.com.bottega.dms.model.numbers.NumberGenerator;
 import pl.com.bottega.dms.model.printing.PrintCostCalculator;
 
@@ -19,13 +18,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 import static pl.com.bottega.dms.model.DocumentStatus.*;
 
-/**
- * Created by anna on 12.02.2017.
- */
 @RunWith(MockitoJUnitRunner.class)
 public class DocumentTest {
 
@@ -101,7 +98,7 @@ public class DocumentTest {
     @Test
     //4. Dokument po publickacji powinien zmienić status na PUBLISHED.
     public void shouldChangeStatusToPublishedOnPublication() {
-        // given publishing document
+        // given published document
         Document document = given().publishedDocument();
 
         // then
@@ -256,13 +253,6 @@ public class DocumentTest {
         document.publish(new PublishDocumentCommand(), printCostCalculator);
     }
 
-    @Test(expected = DocumentStatusException.class)
-    public void shouldNotAllowPublishingDraftDocuments() {
-        Document document = given().newDocument();
-
-        document.publish(new PublishDocumentCommand(), printCostCalculator);
-    }
-
     @Test
     public void shouldCalculateCostOnPublish() {
         //given
@@ -279,6 +269,13 @@ public class DocumentTest {
         assertEquals(new BigDecimal(50), document.getPrintCost());
     }
 
+    @Test(expected = DocumentStatusException.class)
+    public void shouldNotAllowPublishingDraftDocuments() {
+        Document document = given().newDocument();
+
+        document.publish(new PublishDocumentCommand(), printCostCalculator);
+    }
+
     @Test
     public void shouldAllowConfirming() {
         //given
@@ -289,8 +286,76 @@ public class DocumentTest {
         cmd.setEmployeeId(new EmployeeId(1L));
         document.confirm(cmd);
 
-        //then
+        // then
         assertTrue(document.isConfirmedBy(new EmployeeId(1L)));
+    }
+
+    @Test
+    public void shouldKnowPendingConfirmations() {
+        //given
+        Document document = given().publishedDocument(new EmployeeId(1L), new EmployeeId(2L));
+
+        //when
+        Confirmation confirmation = document.getConfirmation(new EmployeeId(1L));
+
+        //then
+        assertThat(confirmation.isConfirmed()).isFalse();
+        assertThat(confirmation.getConfirmationDate()).isNull();
+        assertThat(confirmation.getOwner()).isEqualTo(new EmployeeId(1L));
+        assertThat(confirmation.getProxy()).isNull();
+    }
+
+    @Test
+    public void shouldRememberProxyEmployeeWhenConfirming() {
+        //given
+        Document document = given().publishedDocument(new EmployeeId(1L));
+
+        //when
+        ConfirmForDocumentCommand cmd = new ConfirmForDocumentCommand();
+        cmd.setConfirmingEmployeeId(new EmployeeId(2L));
+        cmd.setEmployeeId(new EmployeeId(1L));
+        document.confirmFor(cmd);
+
+        //then
+        Confirmation confirmation = document.getConfirmation(new EmployeeId(1L));
+        assertThat(confirmation.isConfirmed()).isTrue();
+        assertThat(confirmation.getOwner()).isEqualTo(new EmployeeId(1L));
+        assertThat(confirmation.getProxy()).isEqualTo(new EmployeeId(2L));
+    }
+
+    @Test(expected = DocumentStatusException.class)
+    public void shouldNotAllowConfirmingDocumentTwice() {
+        //given
+        Document document = given().publishedDocument(new EmployeeId(1L));
+
+        //when
+        ConfirmDocumentCommand cmd = new ConfirmDocumentCommand();
+        cmd.setEmployeeId(new EmployeeId(1L));
+        document.confirm(cmd);
+        document.confirm(cmd);
+    }
+
+    @Test(expected = DocumentStatusException.class)
+    public void shouldNotAllowConfirmingByEmployeeOutsideAudience() {
+        //given
+        Document document = given().publishedDocument(new EmployeeId(1L));
+
+        //when
+        ConfirmDocumentCommand cmd = new ConfirmDocumentCommand();
+        cmd.setEmployeeId(new EmployeeId(6000L));
+        document.confirm(cmd);
+    }
+
+    @Test(expected = DocumentStatusException.class)
+    public void shouldNotAllowSameConfirmingAndProxyEmployees() {
+        //given
+        Document document = given().publishedDocument(new EmployeeId(1L));
+
+        //when
+        ConfirmForDocumentCommand cmd = new ConfirmForDocumentCommand();
+        cmd.setEmployeeId(new EmployeeId(1L));
+        cmd.setConfirmingEmployeeId(new EmployeeId(1L));
+        document.confirmFor(cmd);
     }
 
     private static final Long DATE_EPS = 500L;
@@ -319,7 +384,7 @@ public class DocumentTest {
             CreateDocumentCommand cmd = new CreateDocumentCommand();
             cmd.setTitle("test title");
             cmd.setEmployeeId(employeeId);
-            NumberGenerator numberGenerator = mock(NumberGenerator.class);//wygenerowanie implementacji NumberGenerator
+            NumberGenerator numberGenerator = mock(NumberGenerator.class);
             when(numberGenerator.generate()).thenReturn(anyDocumentNumber());
             return new Document(cmd, numberGenerator);
         }

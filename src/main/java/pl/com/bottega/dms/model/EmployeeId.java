@@ -1,8 +1,8 @@
 package pl.com.bottega.dms.model;
 
-/**
- * Created by anna on 14.02.2017.
- */
+import javax.persistence.Embeddable;
+
+@Embeddable
 public class EmployeeId {
 
     private Long id;
@@ -10,6 +10,8 @@ public class EmployeeId {
     public EmployeeId(Long id) {
         this.id = id;
     }
+
+    EmployeeId() {}
 
     @Override
     public boolean equals(Object o) {
@@ -19,11 +21,14 @@ public class EmployeeId {
         EmployeeId that = (EmployeeId) o;
 
         return id.equals(that.id);
-
     }
 
     @Override
     public int hashCode() {
         return id.hashCode();
+    }
+
+    public Long getId() {
+        return id;
     }
 }

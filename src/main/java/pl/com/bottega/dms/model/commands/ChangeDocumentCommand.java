@@ -1,14 +1,13 @@
 package pl.com.bottega.dms.model.commands;
 
+import pl.com.bottega.dms.model.DocumentNumber;
 import pl.com.bottega.dms.model.EmployeeId;
 
-/**
- * Created by anna on 12.02.2017.
- */
 public class ChangeDocumentCommand {
     private String title;
     private String content;
     private EmployeeId employeeId;
+    private String number;
 
     public void setTitle(String title) {
         this.title = title;
@@ -32,5 +31,13 @@ public class ChangeDocumentCommand {
 
     public EmployeeId getEmployeeId() {
         return employeeId;
+    }
+
+    public String getNumber() {
+        return number;
+    }
+
+    public void setNumber(String number) {
+        this.number = number;
     }
 }

@@ -5,13 +5,10 @@ import pl.com.bottega.dms.model.EmployeeId;
 import java.util.Collection;
 import java.util.List;
 
-/**
- * Created by anna on 12.02.2017.
- */
 public class PublishDocumentCommand {
-
     private EmployeeId employeeId;
     private Collection<EmployeeId> recipients;
+    private String number;
 
     public EmployeeId getEmployeeId() {
         return employeeId;
@@ -27,5 +24,13 @@ public class PublishDocumentCommand {
 
     public Collection<EmployeeId> getRecipients() {
         return recipients;
+    }
+
+    public String getNumber() {
+        return number;
+    }
+
+    public void setNumber(String number) {
+        this.number = number;
     }
 }

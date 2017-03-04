@@ -5,19 +5,21 @@ import pl.com.bottega.dms.model.commands.*;
 import pl.com.bottega.dms.model.numbers.NumberGenerator;
 import pl.com.bottega.dms.model.printing.PrintCostCalculator;
 
+import javax.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 import static pl.com.bottega.dms.model.DocumentStatus.*;
 
-/**
- * Created by anna on 12.02.2017.
- */
+@Entity
 public class Document {
 
+    @EmbeddedId
     private DocumentNumber number;
+    @Enumerated(EnumType.STRING)
     private DocumentStatus status;
     private String title;
     private String content;
@@ -25,12 +27,26 @@ public class Document {
     private LocalDateTime verifiedAt;
     private LocalDateTime publishedAt;
     private LocalDateTime changedAt;
+    @Embedded
+    @AttributeOverride(name = "id", column = @Column(name = "creatorId"))
     private EmployeeId creatorId;
+    @Embedded
+    @AttributeOverride(name = "id", column = @Column(name = "verifierId"))
     private EmployeeId verifierId;
+    @Embedded
+    @AttributeOverride(name = "id", column = @Column(name = "editorId"))
     private EmployeeId editorId;
+    @Embedded
+    @AttributeOverride(name = "id", column = @Column(name = "publisherId"))
     private EmployeeId publisherId;
     private BigDecimal printCost;
+
+    @OneToMany(cascade = CascadeType.ALL)
+    @JoinColumn(name = "documentNumber")
     private Set<Confirmation> confirmations;
+
+    Document() {
+    }
 
     public Document(CreateDocumentCommand cmd, NumberGenerator numberGenerator) {
         this.number = numberGenerator.generate();
@@ -64,7 +80,7 @@ public class Document {
     }
 
     public void publish(PublishDocumentCommand cmd, PrintCostCalculator printCostCalculator) {
-        if(!this.status.equals(VERIFIED))
+        if (!this.status.equals(VERIFIED))
             throw new DocumentStatusException("Document should be VERIFIED to PUBLISH");
         this.status = PUBLISHED;
         this.publishedAt = LocalDateTime.now();
@@ -74,27 +90,19 @@ public class Document {
     }
 
     private void createConfirmations(PublishDocumentCommand cmd) {
-        for(EmployeeId employeeId : cmd.getRecipients()) {
+        for (EmployeeId employeeId : cmd.getRecipients()) {
             confirmations.add(new Confirmation(employeeId));
         }
     }
 
     public void confirm(ConfirmDocumentCommand cmd) {
-        for (Confirmation confirmation : confirmations)
-            if (confirmation.isOwnedBy(cmd.getEmployeeId())) {
-                confirmation.confirm();
-                return;
-            }
-        throw new DocumentStatusException(String.format("Document not published for %s", cmd.getEmployeeId()));
+        Confirmation confirmation = getConfirmation(cmd.getEmployeeId());
+        confirmation.confirm();
     }
 
     public void confirmFor(ConfirmForDocumentCommand cmd) {
-        for (Confirmation confirmation : confirmations)
-            if (confirmation.isOwnedBy(cmd.getEmployeeId())) {
-                confirmation.confirmFor(cmd.getConfirmingEmployeeId());
-                return;
-            }
-        throw new DocumentStatusException(String.format("Document not published for %s", cmd.getEmployeeId()));
+        Confirmation confirmation = getConfirmation(cmd.getEmployeeId());
+        confirmation.confirmFor(cmd.getConfirmingEmployeeId());
     }
 
     public DocumentStatus getStatus() {
@@ -149,11 +157,23 @@ public class Document {
         return printCost;
     }
 
+    public void setPrintCost(BigDecimal printCost) {
+        this.printCost = printCost;
+    }
+
     public boolean isConfirmedBy(EmployeeId employeeId) {
+        return getConfirmation(employeeId).isConfirmed();
+    }
+
+    public Set<Confirmation> getConfirmations() {
+        return Collections.unmodifiableSet(confirmations);
+    }
+
+    public Confirmation getConfirmation(EmployeeId employeeId) {
         for (Confirmation confirmation : confirmations) {
             if (confirmation.isOwnedBy(employeeId))
-                return confirmation.isConfirmed();
+                return confirmation;
         }
-        return false;
+        throw new DocumentStatusException(String.format("No confirmation for %s", employeeId));
     }
 }
