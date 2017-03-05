@@ -2,9 +2,6 @@ package pl.com.bottega.dms.application;
 
 import java.time.LocalDateTime;
 
-/**
- * Created by anna on 12.02.2017.
- */
 public class DocumentQuery {
 
     private String phrase;
@@ -92,4 +89,5 @@ public class DocumentQuery {
     public void setSortOrder(String sortOrder) {
         this.sortOrder = sortOrder;
     }
+
 }

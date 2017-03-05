@@ -1,6 +1,5 @@
 package pl.com.bottega.dms.infrastructure;
 
-import org.springframework.stereotype.Component;
 import pl.com.bottega.dms.application.*;
 import pl.com.bottega.dms.model.Confirmation;
 import pl.com.bottega.dms.model.Document;
@@ -16,7 +15,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-@Component
 public class JPADocumentCatalog implements DocumentCatalog {
 
     @PersistenceContext
@@ -25,37 +23,68 @@ public class JPADocumentCatalog implements DocumentCatalog {
     @Override
     public DocumentSearchResults find(DocumentQuery documentQuery) {
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Document> criteriaQuery = criteriaBuilder.createQuery(Document.class);
-        CriteriaQuery<Long> countCriteriaQuery = criteriaBuilder.createQuery(Long.class);
-        Root<Document> root = criteriaQuery.from(Document.class);
-        Root<Document> countRoot = countCriteriaQuery.from(Document.class);
-        countCriteriaQuery.select(criteriaBuilder.count(countRoot));
-        String likeExpression = "%" + documentQuery.getPhrase() + "%";
-        root.fetch("confirmations", JoinType.LEFT);
-        Set<Predicate> predicates = createPredicates(documentQuery, criteriaBuilder, root, likeExpression);
-        criteriaQuery.where(predicates.toArray(new Predicate[] {}));
-        countCriteriaQuery.where(predicates.toArray(new Predicate[] {}));
-        Query query = entityManager.createQuery(criteriaQuery);
-        query.setMaxResults(documentQuery.getPerPage());
-        query.setFirstResult((documentQuery.getPageNumber() - 1) * documentQuery.getPerPage());
-        List<Document> documents = query.getResultList();
         DocumentSearchResults results = new DocumentSearchResults();
+
+        List<DocumentDto> dtos = queryDocuments(documentQuery, criteriaBuilder);
+
+        Query countQuery = queryTotalCount(documentQuery, criteriaBuilder);
+
+        Long total = (Long) countQuery.getSingleResult();
+        results.setPagesCount(total / documentQuery.getPerPage() + (total % documentQuery.getPerPage() == 0 ? 0 : 1));
+
+        results.setDocuments(dtos);
+        results.setPerPage(documentQuery.getPerPage());
+        results.setPageNumber(documentQuery.getPageNumber());
+        return results;
+    }
+
+    private Query queryTotalCount(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder) {
+        CriteriaQuery<Long> countCriteriaQuery = criteriaBuilder.createQuery(Long.class); //count
+        Root<Document> countRoot = countCriteriaQuery.from(Document.class); //count
+        Set<Predicate> countPredicates = createPredicates(documentQuery, criteriaBuilder, countRoot);
+        countCriteriaQuery.select(criteriaBuilder.count(countRoot)); //count
+        countCriteriaQuery.where(countPredicates.toArray(new Predicate[]{})); //count
+        return entityManager.createQuery(countCriteriaQuery);
+    }
+
+    private List<DocumentDto> queryDocuments(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder) {
+        CriteriaQuery<Document> criteriaQuery = criteriaBuilder.createQuery(Document.class); //query
+        Root<Document> root = criteriaQuery.from(Document.class); //query
+        root.fetch("confirmations", JoinType.LEFT); //query
+        Set<Predicate> predicates = createPredicates(documentQuery, criteriaBuilder, root); //query
+        criteriaQuery.where(predicates.toArray(new Predicate[]{})); //query
+        Query query = entityManager.createQuery(criteriaQuery);  //query
+        query.setMaxResults(documentQuery.getPerPage());
+        query.setFirstResult(getFirtResultOffset(documentQuery));
+        List<Document> documents = query.getResultList();
+        return getDocumentDtos(documents);
+    }
+
+    private List<DocumentDto> getDocumentDtos(List<Document> documents) {
         List<DocumentDto> dtos = new LinkedList<>();
         for (Document document : documents) {
             dtos.add(createDocumentDto(document));
         }
-        results.setDocuments(dtos);
-        results.setPerPage(documentQuery.getPerPage());
-        results.setPageNumber(documentQuery.getPageNumber());
-        Query countQuery = entityManager.createQuery(countCriteriaQuery);
-        Long total = (Long) countQuery.getSingleResult();
-        results.setPagesCount(total / documentQuery.getPerPage() + (total % documentQuery.getPerPage() == 0 ? 0 : 1));
-        return results;
+        return dtos;
     }
 
-    private Set<Predicate> createPredicates(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder, Root<Document> root, String likeExpression) {
+    private int getFirtResultOffset(DocumentQuery documentQuery) {
+        return (documentQuery.getPageNumber() - 1) * documentQuery.getPerPage();
+    }
+
+    private Long queryTotalCount(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder, Root<Document> root) {
+        CriteriaQuery<Long> countCriteriaQuery = criteriaBuilder.createQuery(Long.class);
+        Root<Document> countRoot = countCriteriaQuery.from(Document.class);
+        Set<Predicate> countPredicates = createPredicates(documentQuery, criteriaBuilder, root);
+        countCriteriaQuery.select(criteriaBuilder.count(countRoot));
+        countCriteriaQuery.where(countPredicates.toArray(new Predicate[]{}));
+        Query countQuery = entityManager.createQuery(countCriteriaQuery);
+        return (Long) countQuery.getSingleResult();
+    }
+
+    private Set<Predicate> createPredicates(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder, Root<Document> root) {
         Set<Predicate> predicates = new HashSet<>();
-        addPhrasePredicate(documentQuery, criteriaBuilder, root, likeExpression, predicates);
+        addPhrasePredicate(documentQuery, criteriaBuilder, root, predicates);
         addStatusPredicate(documentQuery, criteriaBuilder, root, predicates);
         addCreatorIdPredicate(documentQuery, criteriaBuilder, root, predicates);
         addCreatedBeforePredicate(documentQuery, criteriaBuilder, root, predicates);
@@ -64,20 +93,18 @@ public class JPADocumentCatalog implements DocumentCatalog {
     }
 
     private void addCreatedAfterPredicate(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder, Root<Document> root, Set<Predicate> predicates) {
-        if (documentQuery.getCreatedAfter() != null) {
+        if (documentQuery.getCreatedAfter() != null)
             predicates.add(criteriaBuilder.greaterThan(root.get("createdAt"), documentQuery.getCreatedAfter()));
-        }
     }
 
     private void addCreatedBeforePredicate(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder, Root<Document> root, Set<Predicate> predicates) {
-        if (documentQuery.getCreatedBefore() != null) {
+        if (documentQuery.getCreatedBefore() != null)
             predicates.add(criteriaBuilder.lessThan(root.get("createdAt"), documentQuery.getCreatedBefore()));
-        }
     }
 
     private void addCreatorIdPredicate(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder, Root<Document> root, Set<Predicate> predicates) {
         if (documentQuery.getCreatorId() != null) {
-            predicates.add(criteriaBuilder.equal(root.get("creatorId").get("id"), documentQuery.getCreatorId()));
+            predicates.add(criteriaBuilder.equal(root.get("creatorId"), documentQuery.getCreatorId()));
         }
     }
 
@@ -87,13 +114,15 @@ public class JPADocumentCatalog implements DocumentCatalog {
         }
     }
 
-    private void addPhrasePredicate(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder, Root<Document> root, String likeExpression, Set<Predicate> predicates) {
-        if (documentQuery.getPhrase() != null)
+    private void addPhrasePredicate(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder, Root<Document> root, Set<Predicate> predicates) {
+        if (documentQuery.getPhrase() != null) {
+            String likeExpression = "%" + documentQuery.getPhrase() + "%";
             predicates.add(criteriaBuilder.or(
-                criteriaBuilder.like(root.get("title"), likeExpression),
-                criteriaBuilder.like(root.get("content"), likeExpression),
-                criteriaBuilder.like(root.get("number").get("number"), likeExpression)
-        ));
+                    criteriaBuilder.like(root.get("title"), likeExpression),
+                    criteriaBuilder.like(root.get("content"), likeExpression),
+                    criteriaBuilder.like(root.get("number").get("number"), likeExpression)
+            ));
+        }
     }
 
     @Override
@@ -112,7 +141,7 @@ public class JPADocumentCatalog implements DocumentCatalog {
         documentDto.setContent(document.getContent());
         documentDto.setStatus(document.getStatus().name());
         List<ConfirmationDto> confirmationDtos = new LinkedList<>();
-        for(Confirmation confirmation : document.getConfirmations()) {
+        for (Confirmation confirmation : document.getConfirmations()) {
             ConfirmationDto dto = createConfirmationDto(confirmation);
             confirmationDtos.add(dto);
         }
@@ -125,7 +154,7 @@ public class JPADocumentCatalog implements DocumentCatalog {
         dto.setConfirmed(confirmation.isConfirmed());
         dto.setConfirmedAt(confirmation.getConfirmationDate());
         dto.setOwnerEmployeeId(confirmation.getOwner().getId());
-        if(confirmation.hasProxy())
+        if (confirmation.hasProxy())
             dto.setProxyEmployeeId(confirmation.getProxy().getId());
         return dto;
     }

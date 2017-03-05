@@ -2,15 +2,12 @@ package pl.com.bottega.dms.application;
 
 import java.util.List;
 
-/**
- * Created by anna on 12.02.2017.
- */
 public class DocumentSearchResults {
 
     private List<DocumentDto> documents;
-    private Long pagesCount;
     private Integer pageNumber;
     private Integer perPage;
+    private Long pagesCount;
 
     public List<DocumentDto> getDocuments() {
         return documents;
@@ -22,10 +19,6 @@ public class DocumentSearchResults {
 
     public Long getPagesCount() {
         return pagesCount;
-    }
-
-    public void setPagesCount(Long pagesCount) {
-        this.pagesCount = pagesCount;
     }
 
     public Integer getPageNumber() {
@@ -42,5 +35,9 @@ public class DocumentSearchResults {
 
     public void setPerPage(Integer perPage) {
         this.perPage = perPage;
+    }
+
+    public void setPagesCount(Long pagesCount) {
+        this.pagesCount = pagesCount;
     }
 }
