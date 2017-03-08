@@ -7,6 +7,7 @@ import pl.com.bottega.dms.model.DocumentNumber;
 import pl.com.bottega.dms.model.DocumentStatus;
 
 import javax.persistence.EntityManager;
+import javax.persistence.FetchType;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import javax.persistence.criteria.*;
@@ -26,36 +27,34 @@ public class JPADocumentCatalog implements DocumentCatalog {
         DocumentSearchResults results = new DocumentSearchResults();
 
         List<DocumentDto> dtos = queryDocuments(documentQuery, criteriaBuilder);
+        Long total = queryTotalCount(documentQuery, criteriaBuilder);
 
-        Query countQuery = queryTotalCount(documentQuery, criteriaBuilder);
-
-        Long total = (Long) countQuery.getSingleResult();
         results.setPagesCount(total / documentQuery.getPerPage() + (total % documentQuery.getPerPage() == 0 ? 0 : 1));
-
         results.setDocuments(dtos);
         results.setPerPage(documentQuery.getPerPage());
         results.setPageNumber(documentQuery.getPageNumber());
         return results;
     }
 
-    private Query queryTotalCount(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder) {
-        CriteriaQuery<Long> countCriteriaQuery = criteriaBuilder.createQuery(Long.class); //count
-        Root<Document> countRoot = countCriteriaQuery.from(Document.class); //count
+    private Long queryTotalCount(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder) {
+        CriteriaQuery<Long> countCriteriaQuery = criteriaBuilder.createQuery(Long.class);
+        Root<Document> countRoot = countCriteriaQuery.from(Document.class);
         Set<Predicate> countPredicates = createPredicates(documentQuery, criteriaBuilder, countRoot);
-        countCriteriaQuery.select(criteriaBuilder.count(countRoot)); //count
-        countCriteriaQuery.where(countPredicates.toArray(new Predicate[]{})); //count
-        return entityManager.createQuery(countCriteriaQuery);
+        countCriteriaQuery.select(criteriaBuilder.count(countRoot));
+        countCriteriaQuery.where(countPredicates.toArray(new Predicate[]{}));
+        Query countQuery = entityManager.createQuery(countCriteriaQuery);
+        return (Long) countQuery.getSingleResult();
     }
 
     private List<DocumentDto> queryDocuments(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder) {
-        CriteriaQuery<Document> criteriaQuery = criteriaBuilder.createQuery(Document.class); //query
-        Root<Document> root = criteriaQuery.from(Document.class); //query
-        root.fetch("confirmations", JoinType.LEFT); //query
-        Set<Predicate> predicates = createPredicates(documentQuery, criteriaBuilder, root); //query
-        criteriaQuery.where(predicates.toArray(new Predicate[]{})); //query
-        Query query = entityManager.createQuery(criteriaQuery);  //query
+        CriteriaQuery<Document> criteriaQuery = criteriaBuilder.createQuery(Document.class);
+        Root<Document> root = criteriaQuery.from(Document.class);
+        root.fetch("confirmations", JoinType.LEFT);
+        Set<Predicate> predicates = createPredicates(documentQuery, criteriaBuilder, root);
+        criteriaQuery.where(predicates.toArray(new Predicate[]{}));
+        Query query = entityManager.createQuery(criteriaQuery);
         query.setMaxResults(documentQuery.getPerPage());
-        query.setFirstResult(getFirtResultOffset(documentQuery));
+        query.setFirstResult(getFirstResultOffset(documentQuery));
         List<Document> documents = query.getResultList();
         return getDocumentDtos(documents);
     }
@@ -68,18 +67,8 @@ public class JPADocumentCatalog implements DocumentCatalog {
         return dtos;
     }
 
-    private int getFirtResultOffset(DocumentQuery documentQuery) {
+    private int getFirstResultOffset(DocumentQuery documentQuery) {
         return (documentQuery.getPageNumber() - 1) * documentQuery.getPerPage();
-    }
-
-    private Long queryTotalCount(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder, Root<Document> root) {
-        CriteriaQuery<Long> countCriteriaQuery = criteriaBuilder.createQuery(Long.class);
-        Root<Document> countRoot = countCriteriaQuery.from(Document.class);
-        Set<Predicate> countPredicates = createPredicates(documentQuery, criteriaBuilder, root);
-        countCriteriaQuery.select(criteriaBuilder.count(countRoot));
-        countCriteriaQuery.where(countPredicates.toArray(new Predicate[]{}));
-        Query countQuery = entityManager.createQuery(countCriteriaQuery);
-        return (Long) countQuery.getSingleResult();
     }
 
     private Set<Predicate> createPredicates(DocumentQuery documentQuery, CriteriaBuilder criteriaBuilder, Root<Document> root) {
@@ -140,6 +129,7 @@ public class JPADocumentCatalog implements DocumentCatalog {
         documentDto.setTitle(document.getTitle());
         documentDto.setContent(document.getContent());
         documentDto.setStatus(document.getStatus().name());
+        documentDto.setCreatedAt(document.getCreatedAt());
         List<ConfirmationDto> confirmationDtos = new LinkedList<>();
         for (Confirmation confirmation : document.getConfirmations()) {
             ConfirmationDto dto = createConfirmationDto(confirmation);
