@@ -30,7 +30,7 @@ public class ErrorHandler {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
         return new ResponseEntity<String>(
-                String.format("{\"error\": \"document_status_error\", \"details\": \"%s\"authentication managenent}", ex.getMessage()),
+                String.format("{\"error\": \"document_status_error\", \"details\": \"%s\"authentication management}", ex.getMessage()),
                 headers,
                 HttpStatus.UNPROCESSABLE_ENTITY
         );
