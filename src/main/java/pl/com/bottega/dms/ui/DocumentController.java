@@ -3,10 +3,7 @@ package pl.com.bottega.dms.ui;
 import org.springframework.web.bind.annotation.*;
 import pl.com.bottega.dms.application.*;
 import pl.com.bottega.dms.model.DocumentNumber;
-import pl.com.bottega.dms.model.commands.ChangeDocumentCommand;
-import pl.com.bottega.dms.model.commands.ConfirmDocumentCommand;
-import pl.com.bottega.dms.model.commands.CreateDocumentCommand;
-import pl.com.bottega.dms.model.commands.PublishDocumentCommand;
+import pl.com.bottega.dms.model.commands.*;
 
 /**
  * Created by anna on 05.03.2017.
@@ -19,9 +16,10 @@ public class DocumentController {
     private DocumentCatalog documentCatalog;
     private ReadingConfirmator readingConfirmator;
 
-    public DocumentController(DocumentFlowProcess documentFlowProcess, DocumentCatalog documentCatalog) {
+    public DocumentController(DocumentFlowProcess documentFlowProcess, DocumentCatalog documentCatalog, ReadingConfirmator readingConfirmator) {
         this.documentFlowProcess = documentFlowProcess;
         this.documentCatalog = documentCatalog;
+        this.readingConfirmator = readingConfirmator;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -65,5 +63,11 @@ public class DocumentController {
     public void confirm(@PathVariable String documentNumber, @RequestBody ConfirmDocumentCommand cmd) {
         cmd.setNumber(documentNumber);
         readingConfirmator.confirm(cmd);
+    }
+
+    @PostMapping("/{documentNumber}/proxy-confirmation")
+    public void confirmFor(@PathVariable String documentNumber, @RequestBody ConfirmForDocumentCommand cmd) {
+        cmd.setNumber(documentNumber);
+        readingConfirmator.confirmFor(cmd);
     }
 }
