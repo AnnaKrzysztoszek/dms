@@ -5,7 +5,7 @@ import pl.com.bottega.dms.model.EmployeeId;
 /**
  * Created by anna on 12.02.2017.
  */
-public class CreateDocumentCommand {
+public class CreateDocumentCommand implements EmployeeAware {
     private String title;
     private EmployeeId employeeId;
 
