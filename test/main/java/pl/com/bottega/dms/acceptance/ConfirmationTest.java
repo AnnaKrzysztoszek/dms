@@ -1,5 +1,6 @@
 package pl.com.bottega.dms.acceptance;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,13 +13,16 @@ import pl.com.bottega.dms.model.commands.ConfirmDocumentCommand;
 import pl.com.bottega.dms.model.commands.ConfirmForDocumentCommand;
 import pl.com.bottega.dms.model.commands.CreateDocumentCommand;
 import pl.com.bottega.dms.model.commands.PublishDocumentCommand;
+import pl.com.bottega.dms.shared.AuthHelper;
 
+import javax.transaction.Transactional;
 import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest
+@Transactional
 public class ConfirmationTest {
 
     @Autowired
@@ -29,6 +33,14 @@ public class ConfirmationTest {
 
     @Autowired
     private ReadingConfirmator readingConfirmator;
+
+    @Autowired
+    private AuthHelper authHelper;
+
+    @Before
+    public void authenticate() {
+        authHelper.authenticate();
+    }
 
     @Test
     public void shouldConfirmDocument() {

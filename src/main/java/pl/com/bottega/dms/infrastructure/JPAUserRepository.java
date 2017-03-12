@@ -13,7 +13,6 @@ import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
 import java.util.List;
 
-@Component
 public class JPAUserRepository implements UserRepository {
 
     @PersistenceContext

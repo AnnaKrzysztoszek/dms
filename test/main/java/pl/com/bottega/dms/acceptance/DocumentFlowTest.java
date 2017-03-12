@@ -19,6 +19,7 @@ import pl.com.bottega.dms.model.EmployeeId;
 import pl.com.bottega.dms.model.commands.ChangeDocumentCommand;
 import pl.com.bottega.dms.model.commands.CreateDocumentCommand;
 import pl.com.bottega.dms.model.commands.PublishDocumentCommand;
+import pl.com.bottega.dms.shared.AuthHelper;
 
 import javax.transaction.Transactional;
 import java.util.Arrays;
@@ -37,20 +38,11 @@ public class DocumentFlowTest {
     private DocumentCatalog documentCatalog;
 
     @Autowired
-    private AuthProcess authProcess;
+    private AuthHelper authHelper;
 
     @Before
     public void authenticate() {
-        CreateAccountCommand cmd = new CreateAccountCommand();
-        cmd.setUserName("janek");
-        cmd.setEmployeeId(1L);
-        cmd.setPassword("xxx");
-        authProcess.createAccount(cmd);
-
-        LoginCommand loginCommand = new LoginCommand();
-        loginCommand.setLogin("janek");
-        loginCommand.setPassword("xxx");
-        authProcess.login(loginCommand);
+        authHelper.authenticate();
     }
 
     @Test
