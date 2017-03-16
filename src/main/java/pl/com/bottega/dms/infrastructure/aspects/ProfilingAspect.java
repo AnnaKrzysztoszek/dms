@@ -1,15 +1,11 @@
-package pl.com.bottega.dms.infrastructure;
+package pl.com.bottega.dms.infrastructure.aspects;
 
 import org.apache.log4j.Logger;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.annotation.Before;
 import org.springframework.stereotype.Component;
-import pl.com.bottega.dms.application.user.RequiresAuth;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Date;
 
 /**
