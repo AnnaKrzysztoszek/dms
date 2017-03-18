@@ -1,6 +1,5 @@
 package pl.com.bottega.dms.model;
 
-import pl.com.bottega.dms.application.DocumentStatusException;
 import pl.com.bottega.dms.model.commands.*;
 import pl.com.bottega.dms.model.numbers.NumberGenerator;
 import pl.com.bottega.dms.model.printing.PrintCostCalculator;
@@ -101,8 +100,8 @@ public class Document {
     }
 
     public void confirmFor(ConfirmForDocumentCommand cmd) {
-        Confirmation confirmation = getConfirmation(cmd.getEmployeeId());
-        confirmation.confirmFor(cmd.getConfirmingEmployeeId());
+        Confirmation confirmation = getConfirmation(cmd.getConfirmForEmployeeId());
+        confirmation.confirmFor(cmd.getEmployeeId());
     }
 
     public DocumentStatus getStatus() {

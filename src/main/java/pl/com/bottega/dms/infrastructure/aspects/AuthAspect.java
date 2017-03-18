@@ -5,10 +5,10 @@ import org.aspectj.lang.annotation.Before;
 import org.springframework.stereotype.Component;
 import pl.com.bottega.dms.application.user.AuthRequiredException;
 import pl.com.bottega.dms.application.user.CurrentUser;
+import pl.com.bottega.dms.application.user.RequiresAuth;
 
-/**
- * Created by anna on 12.03.2017.
- */
+import java.util.Arrays;
+
 @Component
 @Aspect
 public class AuthAspect {
@@ -19,9 +19,21 @@ public class AuthAspect {
         this.currentUser = currentUser;
     }
 
-    @Before("@within(pl.com.bottega.dms.application.user.RequiresAuth) || @annotation(pl.com.bottega.dms.application.user.RequiresAuth)")
-    public void ensureAuth() {
-        if (currentUser.getEmployeeId() == null)
-            throw new AuthRequiredException();
+    @Before("@annotation(requiresAuth)")
+    public void ensureAuthAnnotation(RequiresAuth requiresAuth) {
+        checkAuth(requiresAuth);
     }
+
+    @Before("@within(requiresAuth)")
+    public void ensureAuthWithin(RequiresAuth requiresAuth) {
+        checkAuth(requiresAuth);
+    }
+
+    private void checkAuth(RequiresAuth requiresAuth) {
+        if(currentUser.getEmployeeId() == null)
+            throw new AuthRequiredException("No authenticated user");
+        if(!currentUser.getRoles().containsAll(Arrays.asList(requiresAuth.value())))
+            throw new AuthRequiredException("User is not authorized");
+    }
+
 }

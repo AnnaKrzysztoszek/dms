@@ -1,7 +1,5 @@
 package pl.com.bottega.dms.model;
 
-import pl.com.bottega.dms.application.DocumentStatusException;
-
 import javax.persistence.*;
 import java.time.LocalDateTime;
 

@@ -7,7 +7,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import pl.com.bottega.dms.application.DocumentStatusException;
 import pl.com.bottega.dms.model.commands.*;
 import pl.com.bottega.dms.model.numbers.NumberGenerator;
 import pl.com.bottega.dms.model.printing.PrintCostCalculator;
@@ -312,8 +311,8 @@ public class DocumentTest {
 
         //when
         ConfirmForDocumentCommand cmd = new ConfirmForDocumentCommand();
-        cmd.setConfirmingEmployeeId(new EmployeeId(2L));
-        cmd.setEmployeeId(new EmployeeId(1L));
+        cmd.setEmployeeId(new EmployeeId(2L));
+        cmd.setConfirmForEmployeeId(new EmployeeId(1L));
         document.confirmFor(cmd);
 
         //then
@@ -353,8 +352,8 @@ public class DocumentTest {
 
         //when
         ConfirmForDocumentCommand cmd = new ConfirmForDocumentCommand();
+        cmd.setConfirmForEmployeeId(new EmployeeId(1L));
         cmd.setEmployeeId(new EmployeeId(1L));
-        cmd.setConfirmingEmployeeId(new EmployeeId(1L));
         document.confirmFor(cmd);
     }
 
@@ -414,4 +413,5 @@ public class DocumentTest {
             return document;
         }
     }
+
 }

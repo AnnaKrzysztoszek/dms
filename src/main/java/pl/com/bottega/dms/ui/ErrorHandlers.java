@@ -5,16 +5,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import pl.com.bottega.dms.application.DocumentStatusException;
 import pl.com.bottega.dms.application.user.AuthRequiredException;
+import pl.com.bottega.dms.model.DocumentNotFoundException;
+import pl.com.bottega.dms.model.DocumentStatusException;
 import pl.com.bottega.dms.model.commands.CommandInvalidException;
 import pl.com.bottega.dms.model.commands.Validatable;
 
-/**
- * Created by anna on 11.03.2017.
- */
 @ControllerAdvice
-public class ErrorHandler {
+public class ErrorHandlers {
 
     @ExceptionHandler(AuthRequiredException.class)
     public ResponseEntity<String> handleAuthRequiredException() {
@@ -32,14 +30,14 @@ public class ErrorHandler {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
         return new ResponseEntity<String>(
-                String.format("{\"error\": \"document_status_error\", \"details\": \"%s\"authentication management}", ex.getMessage()),
+                String.format("{\"error\": \"document_status_error\", \"details\": \"%s\"}", ex.getMessage()),
                 headers,
                 HttpStatus.UNPROCESSABLE_ENTITY
         );
     }
 
     @ExceptionHandler(CommandInvalidException.class)
-    public ResponseEntity<Validatable.ValidationErrors> handleCommandInvalidException(CommandInvalidException ex) {
+    public ResponseEntity<Validatable.ValidationErrors> handleCommandInvalidExeption(CommandInvalidException ex) {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
         return new ResponseEntity<Validatable.ValidationErrors>(
@@ -48,4 +46,16 @@ public class ErrorHandler {
                 HttpStatus.UNPROCESSABLE_ENTITY
         );
     }
+
+    @ExceptionHandler(DocumentNotFoundException.class)
+    public ResponseEntity<String> handleDocumentNotFoundException(DocumentNotFoundException ex) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
+        return new ResponseEntity<String>(
+                String.format("{\"error\": \"%s\"}", ex.getMessage()),
+                headers,
+                HttpStatus.NOT_FOUND
+        );
+    }
+
 }

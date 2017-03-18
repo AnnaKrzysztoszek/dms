@@ -1,4 +1,4 @@
-package pl.com.bottega.dms.application;
+package pl.com.bottega.dms.model;
 
 /**
  * Created by anna on 14.02.2017.
